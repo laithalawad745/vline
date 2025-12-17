@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Eye } from 'lucide-react';
+import { Eye, Download } from 'lucide-react';
 
 interface ProcessedImage {
   id: string;
@@ -32,33 +32,72 @@ export function ProcessedImagesGallery({ images }: ProcessedImagesGalleryProps) 
     });
   };
 
+  const downloadImage = async (imageUrl: string, fileName: string) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {images.map((image) => {
         const isVisible = visibleImages.has(image.id);
 
         return (
-          <div key={image.id} className="bg-card rounded-lg overflow-hidden shadow-lg border border-border">
+          <div key={image.id} className="bg-card rounded-2xl overflow-hidden shadow-lg border border-border hover:border-[#ec4899]/50 transition-all duration-500 ease-out hover:scale-[1.02]">
             {isVisible ? (
-              <div className="relative aspect-[3/4] bg-secondary/20">
-                <Image src={image.processed_image_url} alt={image.models.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
+              <div className="relative aspect-[3/4] bg-gradient-to-br from-[#6366f1]/5 to-[#ec4899]/5">
+                <Image 
+                  src={image.processed_image_url} 
+                  alt={image.models.name} 
+                  fill 
+                  className="object-cover" 
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" 
+                />
               </div>
             ) : (
-              <div className="relative aspect-[3/4] bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+              <div className="relative aspect-[3/4] bg-gradient-to-br from-[#6366f1]/10 to-[#ec4899]/10 flex items-center justify-center">
                 <div className="text-center p-8">
-                  <Eye className="h-16 w-16 mx-auto mb-4 text-primary/40" />
-                  <p className="text-lg font-medium text-muted-foreground">اضغط لمشاهدة المنتج</p>
-                  <p className="text-sm text-muted-foreground mt-2">على {image.models.name}</p>
+                  <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-[#6366f1]/20 to-[#ec4899]/20 rounded-full flex items-center justify-center">
+                    <Eye className="h-10 w-10 text-[#ec4899]" />
+                  </div>
+            
                 </div>
               </div>
             )}
 
-            <div className="p-4">
-              <p className="font-medium mb-3">{image.models.name}</p>
-              <button onClick={() => toggleImage(image.id)} className={`w-full py-2 px-4 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 ${isVisible ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}>
-                <Eye className="h-5 w-5" />
+            <div className="p-5 space-y-3">
+              <button 
+                onClick={() => toggleImage(image.id)} 
+                className={`w-full py-3 px-4 rounded-xl transition-all duration-500 ease-out font-medium flex items-center justify-center gap-2 ${
+                  isVisible 
+                    ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80' 
+                    : 'bg-gradient-to-r from-[#6366f1] to-[#ec4899] text-white hover:shadow-lg'
+                }`}
+              >
                 {isVisible ? 'إخفاء الصورة' : 'عرض على الموديل'}
               </button>
+
+              {isVisible && (
+                <button
+                  onClick={() => downloadImage(image.processed_image_url, `${image.models.name}.jpg`)}
+                  className="w-full flex items-center justify-center gap-2 bg-card border-2 border-[#6366f1] text-foreground px-4 py-3 rounded-xl font-medium hover:bg-[#6366f1] hover:text-white transition-all duration-300"
+                >
+                  <Download className="h-5 w-5" />
+                  تحميل الصورة
+                </button>
+              )}
             </div>
           </div>
         );

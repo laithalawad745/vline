@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "L Vline - محل الملابس",
+  title: " Vline - محل الملابس",
   description: "تسوق أحدث صيحات الموضة",
 };
 

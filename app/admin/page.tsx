@@ -112,7 +112,7 @@ export default function AdminDashboard() {
       <header className="bg-card border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">لوحة التحكم - L Vline</h1>
+            <h1 className="text-2xl font-bold">لوحة التحكم - Vline</h1>
             <div className="flex items-center gap-4">
               <Link
                 href="/"
