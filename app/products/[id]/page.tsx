@@ -5,11 +5,14 @@ import Link from 'next/link';
 import { ArrowRight, MessageCircle, Eye } from 'lucide-react';
 import { ProcessedImagesGallery } from '@/components/ProcessedImagesGallery';
 
-export default async function ProductPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export const dynamic = 'force-dynamic';
+
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function ProductPage(props: PageProps) {
+  const params = await props.params;
   const product = await getProductById(params.id);
   
   if (!product) {
@@ -17,49 +20,31 @@ export default async function ProductPage({
   }
 
   const processedImages = await getProcessedImages(params.id);
-
-  const whatsappMessage = encodeURIComponent(
-    `مرحباً، أنا مهتم بـ ${product.name}`
-  );
-  const whatsappUrl = `https://wa.me/963954616878?text=${whatsappMessage}`;
+  const msg = 'مرحباً، أنا مهتم بـ ' + product.name;
+  const url = 'https://wa.me/963954616878?text=' + encodeURIComponent(msg);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-4">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <Link href="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
             <ArrowRight className="h-5 w-5" />
             العودة للرئيسية
           </Link>
         </div>
       </header>
 
-      {/* Product Details */}
       <div className="container mx-auto px-4 py-8">
         <div className="grid md:grid-cols-2 gap-8 mb-12">
-          {/* صورة المنتج الأصلية */}
           <div className="relative aspect-square rounded-lg overflow-hidden bg-secondary/20">
-            <Image
-              src={product.original_image_url}
-              alt={product.name}
-              fill
-              className="object-cover"
-              priority
-            />
+            <Image src={product.original_image_url} alt={product.name} fill className="object-cover" priority />
           </div>
 
-          {/* معلومات المنتج */}
           <div className="flex flex-col justify-center">
             <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
             
             {product.description && (
-              <p className="text-lg text-muted-foreground mb-6">
-                {product.description}
-              </p>
+              <p className="text-lg text-muted-foreground mb-6">{product.description}</p>
             )}
 
             {product.price && (
@@ -69,24 +54,16 @@ export default async function ProductPage({
             )}
 
             {product.category && (
-              <p className="text-sm text-muted-foreground mb-6">
-                التصنيف: {product.category}
-              </p>
+              <p className="text-sm text-muted-foreground mb-6">التصنيف: {product.category}</p>
             )}
 
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-medium text-lg"
-            >
+            <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-medium text-lg">
               <MessageCircle className="h-6 w-6" />
               تواصل معنا عبر واتساب
             </a>
           </div>
         </div>
 
-        {/* Processed Images Gallery */}
         {processedImages.length > 0 && (
           <div className="mt-16">
             <div className="flex items-center gap-3 mb-6">

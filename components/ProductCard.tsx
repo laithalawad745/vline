@@ -1,6 +1,6 @@
 'use client';
 
-import { Product } from '@/lib/supabase';
+import type { Product } from '@/lib/supabase';
 import Image from 'next/image';
 import Link from 'next/link';
 import { MessageCircle } from 'lucide-react';
@@ -10,15 +10,12 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const whatsappMessage = encodeURIComponent(
-    `مرحباً، أنا مهتم بـ ${product.name}`
-  );
-  const whatsappUrl = `https://wa.me/963954616878?text=${whatsappMessage}`;
+  const msg = 'مرحباً، أنا مهتم بـ ' + product.name;
+  const url = 'https://wa.me/963954616878?text=' + encodeURIComponent(msg);
 
   return (
     <div className="group bg-card rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-border">
-      {/* صورة المنتج */}
-      <Link href={`/products/${product.id}`}>
+      <Link href={'/products/' + product.id}>
         <div className="relative aspect-square overflow-hidden bg-secondary/20">
           <Image
             src={product.original_image_url}
@@ -30,9 +27,8 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       </Link>
 
-      {/* معلومات المنتج */}
       <div className="p-4">
-        <Link href={`/products/${product.id}`}>
+        <Link href={'/products/' + product.id}>
           <h3 className="font-bold text-lg mb-2 hover:text-primary transition-colors line-clamp-2">
             {product.name}
           </h3>
@@ -52,18 +48,12 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <div className="flex gap-2">
           <Link
-            href={`/products/${product.id}`}
+            href={'/products/' + product.id}
             className="flex-1 bg-primary text-primary-foreground py-2 px-4 rounded-lg hover:bg-primary/90 transition-colors text-center font-medium"
           >
             شاهد على الموديل
           </Link>
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition-colors"
-            title="تواصل عبر واتساب"
-          >
+          <a href={url} target="_blank" rel="noopener noreferrer" className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition-colors">
             <MessageCircle className="h-5 w-5" />
           </a>
         </div>
