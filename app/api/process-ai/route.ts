@@ -39,12 +39,20 @@ export async function POST(request: Request) {
 
     console.log('Processing:', { productId, modelId });
 
+    // التحقق من وجود API Key
+    const apiKey = process.env.HUGGING_FACE_API_KEY;
+    if (!apiKey) {
+      console.warn('⚠️ Warning: No Hugging Face API key found. Using free tier with rate limits.');
+    }
+
     // 1. تحويل الصور إلى Blobs
     const productBlob = await urlToBlob(productImageUrl);
     const modelBlob = await urlToBlob(modelImageUrl);
 
-    // 2. الاتصال بـ Hugging Face API (استخدام IDM-VTON)
-    const client = await Client.connect('yisol/IDM-VTON');
+    // 2. الاتصال بـ Hugging Face API مع API Key
+    const client = await Client.connect('yisol/IDM-VTON', {
+      hf_token: apiKey || undefined, // إضافة API Key هنا
+    });
 
     const result = await client.predict('/tryon', {
       dict: { background: modelBlob, layers: [], composite: null },
@@ -89,10 +97,10 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    console.log('Processing completed successfully');
+    console.log('✅ Processing completed successfully');
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error processing AI:', error);
+    console.error('❌ Error processing AI:', error);
     return NextResponse.json(
       { 
         error: 'Failed to process AI',
