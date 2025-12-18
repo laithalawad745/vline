@@ -3,8 +3,76 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Plus, Trash2, Upload } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Upload, Loader2 } from 'lucide-react';
 import { uploadImage, Model } from '@/lib/supabase';
+
+// مكون لتحميل الصورة مع إعادة المحاولة
+function ImageWithRetry({ 
+  src, 
+  alt, 
+  fill, 
+  className,
+  maxRetries = 3 
+}: { 
+  src: string; 
+  alt: string; 
+  fill?: boolean; 
+  className?: string;
+  maxRetries?: number;
+}) {
+  const [imgSrc, setImgSrc] = useState(src);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  const handleError = () => {
+    if (retryCount < maxRetries) {
+      console.log(`🔄 إعادة محاولة تحميل الصورة (${retryCount + 1}/${maxRetries}):`, src);
+      
+      setTimeout(() => {
+        setRetryCount(prev => prev + 1);
+        setImgSrc(`${src}?retry=${retryCount + 1}`);
+        setIsLoading(true);
+      }, 1000 * (retryCount + 1));
+    } else {
+      console.error('❌ فشل تحميل الصورة بعد', maxRetries, 'محاولات:', src);
+      setHasError(true);
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      {isLoading && (
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 animate-pulse flex items-center justify-center">
+          <Loader2 className="h-8 w-8 text-primary animate-spin" />
+        </div>
+      )}
+
+      {hasError && (
+        <div className="absolute inset-0 bg-destructive/10 flex items-center justify-center">
+          <div className="text-center p-4">
+            <p className="text-destructive text-sm font-medium">فشل التحميل</p>
+            <p className="text-xs text-muted-foreground mt-1">بعد {maxRetries} محاولات</p>
+          </div>
+        </div>
+      )}
+
+      <Image
+        src={imgSrc}
+        alt={alt}
+        fill={fill}
+        className={className}
+        onLoad={() => {
+          setIsLoading(false);
+          setHasError(false);
+        }}
+        onError={handleError}
+        unoptimized
+      />
+    </>
+  );
+}
 
 export default function AdminModelsPage() {
   const [models, setModels] = useState<Model[]>([]);
@@ -46,13 +114,11 @@ export default function AdminModelsPage() {
 
     setUploading(true);
     try {
-      // رفع الصورة
       const imageUrl = await uploadImage('models', newModel.file);
       if (!imageUrl) {
         throw new Error('فشل رفع الصورة');
       }
 
-      // حفظ في قاعدة البيانات
       const response = await fetch('/api/models', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -165,7 +231,10 @@ export default function AdminModelsPage() {
 
         {/* Models Grid */}
         {loading ? (
-          <p className="text-center text-muted-foreground">جاري التحميل...</p>
+          <div className="text-center py-12">
+            <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">جاري التحميل...</p>
+          </div>
         ) : models.length === 0 ? (
           <p className="text-center text-muted-foreground">
             لا توجد موديلات. أضف موديل أولاً.
@@ -178,7 +247,7 @@ export default function AdminModelsPage() {
                 className="bg-card rounded-lg overflow-hidden shadow border border-border"
               >
                 <div className="relative aspect-[3/4]">
-                  <Image
+                  <ImageWithRetry
                     src={model.image_url}
                     alt={model.name}
                     fill

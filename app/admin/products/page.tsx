@@ -3,8 +3,80 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Plus, Trash2, Upload, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Plus, Trash2, Upload, Eye, EyeOff, CheckCircle2, Loader2 } from 'lucide-react';
 import { uploadImage, Product, Model } from '@/lib/supabase';
+
+// مكون لتحميل الصورة مع إعادة المحاولة
+function ImageWithRetry({ 
+  src, 
+  alt, 
+  fill, 
+  className,
+  maxRetries = 3 
+}: { 
+  src: string; 
+  alt: string; 
+  fill?: boolean; 
+  className?: string;
+  maxRetries?: number;
+}) {
+  const [imgSrc, setImgSrc] = useState(src);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  const handleError = () => {
+    if (retryCount < maxRetries) {
+      console.log(`🔄 إعادة محاولة تحميل الصورة (${retryCount + 1}/${maxRetries}):`, src);
+      
+      // إعادة المحاولة بعد تأخير تصاعدي
+      setTimeout(() => {
+        setRetryCount(prev => prev + 1);
+        setImgSrc(`${src}?retry=${retryCount + 1}`);
+        setIsLoading(true);
+      }, 1000 * (retryCount + 1)); // 1s, 2s, 3s
+    } else {
+      console.error('❌ فشل تحميل الصورة بعد', maxRetries, 'محاولات:', src);
+      setHasError(true);
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Loading Skeleton */}
+      {isLoading && (
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 animate-pulse flex items-center justify-center">
+          <Loader2 className="h-8 w-8 text-primary animate-spin" />
+        </div>
+      )}
+
+      {/* Error State */}
+      {hasError && (
+        <div className="absolute inset-0 bg-destructive/10 flex items-center justify-center">
+          <div className="text-center p-4">
+            <p className="text-destructive text-sm font-medium">فشل التحميل</p>
+            <p className="text-xs text-muted-foreground mt-1">بعد {maxRetries} محاولات</p>
+          </div>
+        </div>
+      )}
+
+      {/* Image */}
+      <Image
+        src={imgSrc}
+        alt={alt}
+        fill={fill}
+        className={className}
+        onLoad={() => {
+          setIsLoading(false);
+          setHasError(false);
+        }}
+        onError={handleError}
+        unoptimized
+      />
+    </>
+  );
+}
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -19,6 +91,9 @@ export default function AdminProductsPage() {
     category: '',
     file: null as File | null,
   });
+  
+  // حالة جديدة لاختيار الموديلات (من 1 إلى 3)
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
 
   useEffect(() => {
     loadData();
@@ -45,6 +120,23 @@ export default function AdminProductsPage() {
     }
   };
 
+  // دالة لاختيار/إلغاء اختيار موديل
+  const toggleModelSelection = (modelId: string) => {
+    setSelectedModels((prev) => {
+      if (prev.includes(modelId)) {
+        // إذا كان محدد، قم بإلغاء التحديد
+        return prev.filter((id) => id !== modelId);
+      } else {
+        // إذا لم يكن محدد، تحقق من الحد الأقصى (3)
+        if (prev.length >= 3) {
+          alert('يمكنك اختيار 3 موديلات كحد أقصى');
+          return prev;
+        }
+        return [...prev, modelId];
+      }
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -53,13 +145,13 @@ export default function AdminProductsPage() {
       return;
     }
 
-    if (models.length === 0) {
-      alert('الرجاء إضافة موديلات أولاً في صفحة إدارة الموديلات');
+    if (selectedModels.length === 0) {
+      alert('الرجاء اختيار موديل واحد على الأقل (1-3 موديلات)');
       return;
     }
 
     setProcessing(true);
-    setProgress({ current: 0, total: models.length });
+    setProgress({ current: 0, total: selectedModels.length });
 
     try {
       // 1. رفع صورة المنتج
@@ -83,10 +175,14 @@ export default function AdminProductsPage() {
 
       const product = await productRes.json();
 
-      // 3. معالجة الصور مع كل موديل
-      for (let i = 0; i < models.length; i++) {
-        const model = models[i];
-        setProgress({ current: i + 1, total: models.length });
+      // 3. معالجة الصور مع الموديلات المحددة فقط
+      for (let i = 0; i < selectedModels.length; i++) {
+        const modelId = selectedModels[i];
+        const model = models.find((m) => m.id === modelId);
+        
+        if (!model) continue;
+
+        setProgress({ current: i + 1, total: selectedModels.length });
 
         try {
           const response = await fetch('/api/process-ai', {
@@ -116,6 +212,7 @@ export default function AdminProductsPage() {
         category: '',
         file: null,
       });
+      setSelectedModels([]); // إعادة تعيين الاختيار
       loadData();
     } catch (error) {
       console.error('Error adding product:', error);
@@ -185,7 +282,7 @@ export default function AdminProductsPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2">
@@ -260,6 +357,64 @@ export default function AdminProductsPage() {
               />
             </div>
 
+            {/* Model Selection */}
+            <div>
+              <label className="block text-sm font-medium mb-3">
+                اختر الموديلات (1-3 موديلات) * 
+                <span className="text-muted-foreground text-xs mr-2">
+                  ({selectedModels.length}/3 محدد)
+                </span>
+              </label>
+              
+              {models.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  لا توجد موديلات متاحة
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {models.map((model) => {
+                    const isSelected = selectedModels.includes(model.id);
+                    
+                    return (
+                      <div
+                        key={model.id}
+                        onClick={() => toggleModelSelection(model.id)}
+                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-300 ${
+                          isSelected
+                            ? 'border-primary shadow-lg scale-105'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="relative aspect-[3/4]">
+                          <ImageWithRetry
+                            src={model.image_url}
+                            alt={model.name}
+                            fill
+                            className="object-cover"
+                          />
+                          
+                          {/* Checkmark Overlay */}
+                          {isSelected && (
+                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                              <div className="bg-primary rounded-full p-2">
+                                <CheckCircle2 className="h-8 w-8 text-white" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="p-2 bg-card">
+                          <p className="text-sm font-medium text-center truncate">
+                            {model.name}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {processing && (
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
                 <p className="font-medium mb-2">
@@ -281,7 +436,7 @@ export default function AdminProductsPage() {
 
             <button
               type="submit"
-              disabled={processing || models.length === 0}
+              disabled={processing || models.length === 0 || selectedModels.length === 0}
               className="bg-primary text-primary-foreground py-2 px-6 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {processing ? (
@@ -314,7 +469,7 @@ export default function AdminProductsPage() {
                 className="bg-card rounded-lg overflow-hidden shadow border border-border"
               >
                 <div className="relative aspect-square">
-                  <Image
+                  <ImageWithRetry
                     src={product.original_image_url}
                     alt={product.name}
                     fill
