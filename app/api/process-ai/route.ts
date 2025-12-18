@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     // 2. الاتصال بـ Hugging Face API مع API Key الحالي
     console.log(`🔗 Connecting to Hugging Face using Account ${accountNumber}...`);
     const client = await Client.connect('yisol/IDM-VTON', {
-      hf_token: apiKey || undefined,
+      hf_token: (apiKey as `hf_${string}`) || undefined,
     });
 
     console.log('🎨 Processing AI image...');
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     });
 
     // 3. حفظ النتيجة
-    const resultUrl = result.data[0]?.url;
+    const resultUrl = (result.data as any)[0]?.url;
     if (!resultUrl) {
       throw new Error('No result from AI processing');
     }
