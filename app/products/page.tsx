@@ -1,7 +1,7 @@
 import { getProducts } from '@/lib/supabase';
-import { ProductCard } from '@/components/ProductCard';
-import { ShoppingBag, Sparkles, Filter, Search } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { ArrowRight, Search, Heart, Sparkles } from 'lucide-react';
 
 export const revalidate = 60;
 
@@ -9,163 +9,93 @@ export default async function ProductsPage() {
   const products = await getProducts(true);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#131022] text-white pb-8">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-gradient-to-r from-[#6366f1] to-[#ec4899] shadow-lg">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full group-hover:scale-110 transition-transform duration-300">
-                <ShoppingBag className="h-7 w-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-white tracking-wide">
-                   Vline
-                </h1>
-                <p className="text-xs text-white/80">أناقة بلا حدود</p>
-              </div>
-            </Link>
-            
-            <div className="flex items-center gap-3">
-              {/* Desktop Button */}
-              <Link 
-                href="/products"
-                className="hidden md:flex items-center gap-2 bg-white/20 backdrop-blur-sm px-6 py-2.5 rounded-full text-white font-medium hover:bg-white/30 transition-all duration-300 hover:scale-105"
-              >
-                <ShoppingBag className="h-5 w-5" />
-                <span>جميع المنتجات</span>
-              </Link>
-
-              {/* Mobile Button */}
-              <Link 
-                href="/products"
-                className="md:hidden bg-white/20 backdrop-blur-sm p-2.5 rounded-full text-white hover:bg-white/30 transition-all duration-300 hover:scale-105"
-              >
-                <ShoppingBag className="h-5 w-5" />
-              </Link>
-
-            </div>
-          </div>
+      <div className="sticky top-0 z-50 bg-[#131022]/95 backdrop-blur-md border-b border-white/10">
+        <div className="flex items-center px-4 py-3 justify-between">
+          {/* Back Button */}
+          <Link href="/" className="flex size-10 shrink-0 items-center justify-start cursor-pointer text-white">
+            <ArrowRight className="h-6 w-6" />
+          </Link>
+          
+          <h2 className="text-base font-bold leading-tight tracking-tight flex-1 text-center">
+             جميع المنتجات
+          </h2>
+          
+      
         </div>
-      </header>
 
-      {/* Page Header */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#6366f1]/10 via-[#ec4899]/10 to-[#6366f1]/10 py-16">
-       
-
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <div className="inline-flex items-center gap-2 bg-white/80 dark:bg-black/30 backdrop-blur-sm px-6 py-2 rounded-full mb-6 border border-[#ec4899]/30">
-            <ShoppingBag className="h-5 w-5 text-[#ec4899]" />
-            <span className="text-sm font-medium text-foreground">
-              {products.length} منتج متوفر
-            </span>
+        {/* Category Chips */}
+        {/* <div className="flex gap-3 px-4 pb-3 overflow-x-auto no-scrollbar w-full">
+          <div className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#292348] px-3 cursor-pointer active:scale-95 transition-transform">
+            <p className="text-white text-xs font-medium leading-normal">تصنيف</p>
           </div>
-
-          <h1 className="text-5xl md:text-6xl font-bold mb-4">
-            <span className="bg-gradient-to-r from-[#6366f1] to-[#ec4899] bg-clip-text text-transparent">
-              جميع المنتجات
-            </span>
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            اكتشفي مجموعتنا الكاملة من أفضل وأحدث الملابس النسائية
-          </p>
-        </div>
-      </section>
-
-      {/* Filters Bar */}
-      <section className="bg-card border-y border-border sticky top-[72px] z-40">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <Filter className="h-5 w-5" />
-              <span className="font-medium">تصفية حسب:</span>
-              <button className="px-4 py-2 bg-gradient-to-r from-[#6366f1] to-[#ec4899] text-white rounded-full text-sm font-medium hover:shadow-lg transition-all duration-300">
-                الكل
-              </button>
-            </div>
-            
-            <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-              <Search className="h-5 w-5" />
-              <input
-                type="text"
-                placeholder="ابحث عن منتج..."
-                className="px-4 py-2 bg-background border border-input rounded-full focus:outline-none focus:ring-2 focus:ring-[#ec4899] transition-all duration-300 w-64"
-              />
-            </div>
+          <div className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full border border-white/10 bg-transparent px-3 cursor-pointer hover:bg-[#292348]/50 transition-colors">
+            <p className="text-white text-xs font-medium leading-normal">فساتين</p>
           </div>
-        </div>
-      </section>
+          <div className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full border border-white/10 bg-transparent px-3 cursor-pointer hover:bg-[#292348]/50 transition-colors">
+            <p className="text-white text-xs font-medium leading-normal">عبايات</p>
+          </div>
+          <div className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full border border-white/10 bg-transparent px-3 cursor-pointer hover:bg-[#292348]/50 transition-colors">
+            <p className="text-white text-xs font-medium leading-normal">تنورات</p>
+          </div>
+          <div className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full border border-white/10 bg-transparent px-3 cursor-pointer hover:bg-[#292348]/50 transition-colors">
+            <p className="text-white text-xs font-medium leading-normal">أطقم</p>
+          </div>
+        </div> */}
+
+
+      </div>
 
       {/* Products Grid */}
-      <section className="container mx-auto px-4 py-12">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 px-4 pt-4">
         {products.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="max-w-md mx-auto">
-              <div className="w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-[#6366f1]/20 to-[#ec4899]/20 rounded-full flex items-center justify-center">
-                <ShoppingBag className="h-16 w-16 text-[#ec4899]" />
-              </div>
-              <h2 className="text-3xl font-bold mb-4">
-                <span className="bg-gradient-to-r from-[#6366f1] to-[#ec4899] bg-clip-text text-transparent">
-                  لا توجد منتجات حالياً
-                </span>
-              </h2>
-              <p className="text-xl text-muted-foreground mb-8">
-                قريباً... منتجات رائعة في الطريق إليك
-              </p>
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#6366f1] to-[#ec4899] text-white font-bold rounded-full hover:shadow-lg transition-all duration-300"
-              >
-                العودة للرئيسية
-              </Link>
-            </div>
+          <div className="col-span-2 text-center py-20">
+            <p className="text-gray-400">لا توجد منتجات حالياً</p>
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-
-            {/* Pagination */}
-            <div className="mt-12 flex justify-center">
-              <div className="inline-flex items-center gap-2 bg-card border border-border rounded-full p-2">
-                <button className="w-10 h-10 rounded-full bg-gradient-to-r from-[#6366f1] to-[#ec4899] text-white font-bold hover:shadow-lg transition-all duration-300">
-                  1
-                </button>
-                <button className="w-10 h-10 rounded-full hover:bg-secondary transition-all duration-300 text-muted-foreground hover:text-foreground">
-                  2
-                </button>
-                <button className="w-10 h-10 rounded-full hover:bg-secondary transition-all duration-300 text-muted-foreground hover:text-foreground">
-                  3
-                </button>
+          products.map((product) => (
+            <Link 
+              key={product.id}
+              href={`/product/${product.id}`}
+              className="flex flex-col gap-3 group cursor-pointer"
+            >
+              {/* Product Image */}
+              <div className="relative w-full aspect-[4/5] overflow-hidden rounded-2xl">
+                <Image
+                  src={product.original_image_url}
+                  alt={product.name}
+                  fill
+                  className="object-cover transition-all duration-[2000ms] ease-in-out group-hover:scale-110"
+                  sizes="(max-width: 768px) 50vw, 33vw"
+                />
+                
+           
               </div>
-            </div>
-          </>
+
+              {/* Product Info */}
+              <div>
+                <div className="flex justify-between items-start">
+                  <p className="text-white text-base font-bold leading-normal line-clamp-1">
+                    {product.name}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  {product.price && (
+                    <>
+                      <p className="text-[#3713ec] text-sm font-bold leading-normal">
+                        {product.price.toLocaleString('ar-SY')} ل.س
+                      </p>
+                      <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                    </>
+                  )}
+                  <p className="text-[#9b92c9] text-xs font-normal">جرب الآن</p>
+                </div>
+              </div>
+            </Link>
+          ))
         )}
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gradient-to-r from-[#1e1b4b] to-[#831843] text-white py-12 mt-20">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                <ShoppingBag className="h-6 w-6" />
-              </div>
-              <h3 className="text-2xl font-bold"> Vline</h3>
-            </div>
-            <p className="text-white/80 mb-6">
-              وجهتك للأناقة والموضة النسائية
-            </p>
-            <div className="flex items-center justify-center gap-6 text-sm text-white/70">
-              <span>© 2026  Vline</span>
-            
-            </div>
-          </div>
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }
