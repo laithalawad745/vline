@@ -1,11 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/auth-helpers-nextjs';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+// Client للاستخدام العام (المنتجات، الموديلات، إلخ)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Types
+// Client للمصادقة (Auth)
+export const supabaseAuth = createBrowserClient(
+  supabaseUrl,
+  supabaseAnonKey
+);
+
+// Types (نفس اللي موجود)
 export interface Product {
   id: string;
   name: string;
@@ -34,7 +42,7 @@ export interface ProcessedImage {
   created_at: string;
 }
 
-// Helper Functions
+// Helper Functions (نفسها، ما بدها تتغير)
 export async function uploadImage(
   bucket: string,
   file: File,

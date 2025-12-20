@@ -3,19 +3,18 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { supabaseAuth } from '@/lib/supabase';
 import { 
   Package, 
   Users, 
-  Settings, 
   LogOut,
-  TrendingUp,
-  Image as ImageIcon 
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
 
 export default function AdminDashboard() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
   const [stats, setStats] = useState({
     products: 0,
     models: 0,
@@ -24,12 +23,17 @@ export default function AdminDashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    const auth = sessionStorage.getItem('admin_auth');
-    if (auth === 'true') {
-      setIsAuthenticated(true);
-      loadStats();
-    }
+    checkUser();
+    loadStats();
   }, []);
+
+  const checkUser = async () => {
+    const { data: { session } } = await supabaseAuth.auth.getSession();
+    if (session) {
+      setUser(session.user);
+    }
+    setLoading(false);
+  };
 
   const loadStats = async () => {
     try {
@@ -53,76 +57,37 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD || password === 'admin123') {
-      sessionStorage.setItem('admin_auth', 'true');
-      setIsAuthenticated(true);
-      setError('');
-      loadStats();
-    } else {
-      setError('كلمة السر غير صحيحة');
-    }
+  const handleLogout = async () => {
+    await supabaseAuth.auth.signOut();
+    router.push('/login');
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('admin_auth');
-    setIsAuthenticated(false);
-    setPassword('');
-  };
-
-  if (!isAuthenticated) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="bg-card p-8 rounded-lg shadow-lg border border-border max-w-md w-full">
-          <h1 className="text-2xl font-bold mb-6 text-center">
-            تسجيل الدخول - لوحة التحكم
-          </h1>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                كلمة السر
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="أدخل كلمة السر"
-              />
-            </div>
-            {error && (
-              <p className="text-destructive text-sm">{error}</p>
-            )}
-            <button
-              type="submit"
-              className="w-full bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium"
-            >
-              دخول
-            </button>
-          </form>
-        </div>
+      <div className="min-h-screen bg-[#131022] flex items-center justify-center">
+        <Loader2 className="h-12 w-12 text-[#3713ec] animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#131022]">
       {/* Header */}
-      <header className="bg-card border-b border-border">
+      <header className="bg-[#1a162e] border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">لوحة التحكم - Vline</h1>
+            <h1 className="text-2xl font-bold text-white">لوحة التحكم - Vline</h1>
             <div className="flex items-center gap-4">
+              <span className="text-gray-400 text-sm">{user?.email}</span>
               <Link
                 href="/"
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="text-gray-400 hover:text-white transition-colors"
               >
                 عرض الموقع
               </Link>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 text-destructive hover:text-destructive/80 transition-colors"
+                className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors"
               >
                 <LogOut className="h-5 w-5" />
                 خروج
@@ -136,39 +101,39 @@ export default function AdminDashboard() {
       <div className="container mx-auto px-4 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-card p-6 rounded-lg shadow border border-border">
+          <div className="bg-[#1a162e] p-6 rounded-2xl shadow border border-white/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-muted-foreground text-sm mb-1">
+                <p className="text-gray-400 text-sm mb-1">
                   عدد المنتجات
                 </p>
-                <p className="text-3xl font-bold">{stats.products}</p>
+                <p className="text-3xl font-bold text-white">{stats.products}</p>
               </div>
-              <Package className="h-12 w-12 text-primary opacity-20" />
+              <Package className="h-12 w-12 text-[#3713ec] opacity-20" />
             </div>
           </div>
 
-          <div className="bg-card p-6 rounded-lg shadow border border-border">
+          <div className="bg-[#1a162e] p-6 rounded-2xl shadow border border-white/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-muted-foreground text-sm mb-1">
+                <p className="text-gray-400 text-sm mb-1">
                   عدد الموديلات
                 </p>
-                <p className="text-3xl font-bold">{stats.models}</p>
+                <p className="text-3xl font-bold text-white">{stats.models}</p>
               </div>
-              <Users className="h-12 w-12 text-primary opacity-20" />
+              <Users className="h-12 w-12 text-[#3713ec] opacity-20" />
             </div>
           </div>
 
-          <div className="bg-card p-6 rounded-lg shadow border border-border">
+          <div className="bg-[#1a162e] p-6 rounded-2xl shadow border border-white/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-muted-foreground text-sm mb-1">
+                <p className="text-gray-400 text-sm mb-1">
                   الصور المعالجة
                 </p>
-                <p className="text-3xl font-bold">{stats.processedImages}</p>
+                <p className="text-3xl font-bold text-white">{stats.processedImages}</p>
               </div>
-              <ImageIcon className="h-12 w-12 text-primary opacity-20" />
+              <ImageIcon className="h-12 w-12 text-[#3713ec] opacity-20" />
             </div>
           </div>
         </div>
@@ -177,22 +142,22 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Link
             href="/admin/products"
-            className="bg-card p-8 rounded-lg shadow border border-border hover:shadow-lg transition-all group"
+            className="bg-[#1a162e] p-8 rounded-2xl shadow border border-white/10 hover:border-[#3713ec]/50 transition-all group"
           >
-            <Package className="h-12 w-12 text-primary mb-4 group-hover:scale-110 transition-transform" />
-            <h2 className="text-2xl font-bold mb-2">إدارة المنتجات</h2>
-            <p className="text-muted-foreground">
+            <Package className="h-12 w-12 text-[#3713ec] mb-4 group-hover:scale-110 transition-transform" />
+            <h2 className="text-2xl font-bold text-white mb-2">إدارة المنتجات</h2>
+            <p className="text-gray-400">
               إضافة، تعديل، وحذف المنتجات
             </p>
           </Link>
 
           <Link
             href="/admin/models"
-            className="bg-card p-8 rounded-lg shadow border border-border hover:shadow-lg transition-all group"
+            className="bg-[#1a162e] p-8 rounded-2xl shadow border border-white/10 hover:border-[#3713ec]/50 transition-all group"
           >
-            <Users className="h-12 w-12 text-primary mb-4 group-hover:scale-110 transition-transform" />
-            <h2 className="text-2xl font-bold mb-2">إدارة الموديلات</h2>
-            <p className="text-muted-foreground">
+            <Users className="h-12 w-12 text-[#3713ec] mb-4 group-hover:scale-110 transition-transform" />
+            <h2 className="text-2xl font-bold text-white mb-2">إدارة الموديلات</h2>
+            <p className="text-gray-400">
               إضافة وإدارة صور الموديلات
             </p>
           </Link>

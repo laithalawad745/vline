@@ -1,7 +1,44 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
-// GET - جلب جميع الموديلات
+// دالة للتحقق من أن المستخدم Admin
+async function checkAdmin() {
+  const cookieStore = await cookies();
+
+  const supabaseServer = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+
+  const { data: { session } } = await supabaseServer.auth.getSession();
+
+  if (!session) {
+    return { authorized: false, error: 'غير مسجل دخول' };
+  }
+
+  const { data: profile } = await supabaseServer
+    .from('profiles')
+    .select('role')
+    .eq('id', session.user.id)
+    .single();
+
+  if (profile?.role !== 'admin') {
+    return { authorized: false, error: 'غير مصرح' };
+  }
+
+  return { authorized: true };
+}
+
+// GET - جلب جميع الموديلات (متاح للجميع)
 export async function GET() {
   try {
     const { data, error } = await supabase
@@ -21,8 +58,17 @@ export async function GET() {
   }
 }
 
-// POST - إضافة موديل جديد
+// POST - إضافة موديل جديد (للأدمن فقط)
 export async function POST(request: Request) {
+  // التحقق من الصلاحيات
+  const auth = await checkAdmin();
+  if (!auth.authorized) {
+    return NextResponse.json(
+      { error: auth.error },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = await request.json();
     
@@ -50,8 +96,17 @@ export async function POST(request: Request) {
   }
 }
 
-// DELETE - حذف موديل
+// DELETE - حذف موديل (للأدمن فقط)
 export async function DELETE(request: Request) {
+  // التحقق من الصلاحيات
+  const auth = await checkAdmin();
+  if (!auth.authorized) {
+    return NextResponse.json(
+      { error: auth.error },
+      { status: 401 }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
