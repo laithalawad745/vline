@@ -87,7 +87,6 @@ export default function ProductPage({ params }: PageProps) {
         <Link href="/products" className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 active:scale-95 transition-transform">
           <ArrowRight className="h-5 w-5" />
         </Link>
-
       </nav>
 
       {/* Product Image */}
@@ -157,20 +156,45 @@ export default function ProductPage({ params }: PageProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-w-5xl mx-auto">
               {processedImages.map((image) => {
                 const isVisible = visibleModels.has(image.id);
+                const isManual = image.model_id === 'manual_edit';
 
                 return (
                   <div key={image.id} className="space-y-2">
                     {isVisible ? (
                       <>
                         <div className="relative aspect-[3/4] rounded-xl overflow-hidden border border-white/10">
-                          <Image
-                            src={image.processed_image_url}
-                            alt={image.models.name}
-                            fill
-                            className="object-cover"
-                          />
+                          {/* إذا كان فيديو، نعرض الفيديو */}
+                          {isManual && image.video_url ? (
+                            <video
+                              src={image.video_url}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Image
+                              src={image.processed_image_url}
+                              alt={isManual ? 'مودل معدل يدوياً' : image.models?.name}
+                              fill
+                              className="object-cover"
+                            />
+                          )}
+                          
+                          {/* علامة للمودل اليدوي */}
+                          {isManual && (
+                            <div className="absolute top-2 left-2 bg-gradient-to-r from-[#6366f1] to-[#ec4899] text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                              <Sparkles className="h-3 w-3" />
+                              Premium
+                            </div>
+                          )}
                         </div>
-                        <p className="text-xs text-gray-400 text-center">{image.models.name}</p>
+                        
+                        <p className="text-xs text-gray-400 text-center">
+                          {isManual ? 'مودل معدل خصيصاً ✨' : image.models?.name}
+                        </p>
+                        
                         <div className="flex gap-2">
                           <button
                             onClick={() => toggleModelVisibility(image.id)}
@@ -179,7 +203,10 @@ export default function ProductPage({ params }: PageProps) {
                             إخفاء
                           </button>
                           <button
-                            onClick={() => downloadImage(image.processed_image_url, `${product.name}-${image.models.name}.jpg`)}
+                            onClick={() => downloadImage(
+                              image.processed_image_url, 
+                              `${product.name}-${isManual ? 'premium' : image.models?.name}.jpg`
+                            )}
                             className="flex-1 flex items-center justify-center gap-1 bg-[#3713ec]/20 border border-[#3713ec]/30 text-[#3713ec] py-2 rounded-lg text-xs font-bold hover:bg-[#3713ec] hover:text-white transition-colors"
                           >
                             <Download className="h-3 w-3" />
@@ -192,8 +219,11 @@ export default function ProductPage({ params }: PageProps) {
                         <div className="relative aspect-[3/4] rounded-xl overflow-hidden border border-white/10 bg-gradient-to-br from-[#6366f1]/20 to-[#ec4899]/20 flex items-center justify-center">
                           <div className="text-center">
                             <div className="w-16 h-16 mx-auto mb-3 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
+                              {isManual && <Sparkles className="h-8 w-8 text-[#ec4899]" />}
                             </div>
-                            <p className="text-xs text-gray-300">{image.models.name}</p>
+                            <p className="text-xs text-gray-300">
+                              {isManual ? 'مودل معدل خصيصاً ✨' : image.models?.name}
+                            </p>
                           </div>
                         </div>
                         <button

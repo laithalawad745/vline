@@ -38,6 +38,54 @@ async function checkAdmin() {
   return { authorized: true };
 }
 
+// 🆕 دالة لإرسال إشعار لموقع الأدمن
+async function notifyAdminSite(productData: any) {
+  const adminWebhookUrl = process.env.ADMIN_WEBHOOK_URL;
+  const webhookSecret = process.env.WEBHOOK_SECRET;
+  const storeId = process.env.NEXT_PUBLIC_STORE_ID;
+  const storeName = process.env.NEXT_PUBLIC_STORE_NAME;
+
+  // إذا ما في webhook URL، نتخطى الإرسال
+  if (!adminWebhookUrl) {
+    console.log('⚠️ ADMIN_WEBHOOK_URL not configured, skipping notification');
+    return;
+  }
+
+  try {
+    console.log('📤 Sending notification to admin site...');
+    
+    const response = await fetch(adminWebhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Webhook-Secret': webhookSecret || '',
+      },
+      body: JSON.stringify({
+        storeId,
+        storeName,
+        product: {
+          id: productData.id,
+          name: productData.name,
+          description: productData.description,
+          price: productData.price,
+          category: productData.category,
+          original_image_url: productData.original_image_url,
+          created_at: productData.created_at,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('❌ Failed to notify admin site:', response.statusText);
+    } else {
+      console.log('✅ Admin site notified successfully');
+    }
+  } catch (error) {
+    console.error('❌ Error notifying admin site:', error);
+    // لا نوقف العملية إذا فشل الإرسال
+  }
+}
+
 // GET - جلب جميع المنتجات (متاح للجميع)
 export async function GET() {
   try {
@@ -87,6 +135,9 @@ export async function POST(request: Request) {
       .single();
 
     if (error) throw error;
+
+    // 🆕 إرسال إشعار لموقع الأدمن
+    await notifyAdminSite(data);
 
     return NextResponse.json(data);
   } catch (error) {
