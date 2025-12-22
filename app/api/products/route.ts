@@ -38,31 +38,37 @@ async function checkAdmin() {
   return { authorized: true };
 }
 
-// 🆕 دالة لإرسال إشعار لموقع الأدمن
-async function notifyAdminSite(productData: any) {
-  const adminWebhookUrl = process.env.ADMIN_WEBHOOK_URL;
+// 🆕 دالة لإرسال إشعار لموقع CenterStore
+async function notifyCenterStore(productData: any) {
+  const centerStoreUrl = process.env.CENTER_STORE_WEBHOOK_URL;
   const webhookSecret = process.env.WEBHOOK_SECRET;
   const storeId = process.env.NEXT_PUBLIC_STORE_ID;
   const storeName = process.env.NEXT_PUBLIC_STORE_NAME;
 
   // إذا ما في webhook URL، نتخطى الإرسال
-  if (!adminWebhookUrl) {
-    console.log('⚠️ ADMIN_WEBHOOK_URL not configured, skipping notification');
+  if (!centerStoreUrl) {
+    console.log('⚠️ CENTER_STORE_WEBHOOK_URL not configured, skipping notification');
     return;
   }
 
   try {
-    console.log('📤 Sending notification to admin site...');
+    console.log('📤 Sending notification to CenterStore...');
+    console.log('🏪 Store:', storeName, '(ID:', storeId, ')');
     
-    const response = await fetch(adminWebhookUrl, {
+    const response = await fetch(centerStoreUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Webhook-Secret': webhookSecret || '',
       },
       body: JSON.stringify({
-        storeId,
-        storeName,
+        event: 'product.created',
+        timestamp: new Date().toISOString(),
+        store: {
+          id: storeId,
+          name: storeName,
+          url: process.env.NEXT_PUBLIC_SITE_URL || 'https://vline.com',
+        },
         product: {
           id: productData.id,
           name: productData.name,
@@ -76,12 +82,12 @@ async function notifyAdminSite(productData: any) {
     });
 
     if (!response.ok) {
-      console.error('❌ Failed to notify admin site:', response.statusText);
+      console.error('❌ Failed to notify CenterStore:', response.statusText);
     } else {
-      console.log('✅ Admin site notified successfully');
+      console.log('✅ CenterStore notified successfully');
     }
   } catch (error) {
-    console.error('❌ Error notifying admin site:', error);
+    console.error('❌ Error notifying CenterStore:', error);
     // لا نوقف العملية إذا فشل الإرسال
   }
 }
@@ -136,8 +142,8 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    // 🆕 إرسال إشعار لموقع الأدمن
-    await notifyAdminSite(data);
+    // 🆕 إرسال إشعار لموقع CenterStore
+    await notifyCenterStore(data);
 
     return NextResponse.json(data);
   } catch (error) {

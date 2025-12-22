@@ -5,7 +5,7 @@ import { getProductById, getProcessedImages } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Share2, Heart, Sparkles, Download, MessageCircle, Truck } from 'lucide-react';
+import { ArrowRight, Sparkles, Download, MessageCircle, Truck } from 'lucide-react';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -156,7 +156,8 @@ export default function ProductPage({ params }: PageProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-w-5xl mx-auto">
               {processedImages.map((image) => {
                 const isVisible = visibleModels.has(image.id);
-                const isManual = image.model_id === 'manual_edit';
+                const isManual = !image.model_id; // NULL = محتوى يدوي
+                const hasVideo = image.video_url;
 
                 return (
                   <div key={image.id} className="space-y-2">
@@ -164,7 +165,7 @@ export default function ProductPage({ params }: PageProps) {
                       <>
                         <div className="relative aspect-[3/4] rounded-xl overflow-hidden border border-white/10">
                           {/* إذا كان فيديو، نعرض الفيديو */}
-                          {isManual && image.video_url ? (
+                          {isManual && hasVideo ? (
                             <video
                               src={image.video_url}
                               autoPlay
@@ -219,7 +220,7 @@ export default function ProductPage({ params }: PageProps) {
                         <div className="relative aspect-[3/4] rounded-xl overflow-hidden border border-white/10 bg-gradient-to-br from-[#6366f1]/20 to-[#ec4899]/20 flex items-center justify-center">
                           <div className="text-center">
                             <div className="w-16 h-16 mx-auto mb-3 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
-                              {isManual && <Sparkles className="h-8 w-8 text-[#ec4899]" />}
+                              <Sparkles className="h-8 w-8 text-[#ec4899]" />
                             </div>
                             <p className="text-xs text-gray-300">
                               {isManual ? 'مودل معدل خصيصاً ✨' : image.models?.name}
