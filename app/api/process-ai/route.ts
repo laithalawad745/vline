@@ -1,42 +1,20 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { Client } from '@gradio/client';
+import Replicate from 'replicate';
 
-// إعدادات Runtime
 export const runtime = 'nodejs';
 
-// تعريف حسابات Hugging Face الثلاثة
-const HF_ACCOUNTS = [
-  process.env.HUGGING_FACE_API_KEY_1,
-  process.env.HUGGING_FACE_API_KEY_2,
-  process.env.HUGGING_FACE_API_KEY_3,
-].filter(Boolean);
-
-// متغير لتتبع الحساب الحالي
-let currentAccountIndex = 0;
-
-// دالة للحصول على الحساب التالي
-function getNextAccount(): { apiKey: string | undefined; accountNumber: number } {
-  if (HF_ACCOUNTS.length === 0) {
-    console.warn('⚠️ Warning: No Hugging Face API keys found');
-    return { apiKey: undefined, accountNumber: 0 };
-  }
-
-  const accountNumber = currentAccountIndex + 1;
-  const apiKey = HF_ACCOUNTS[currentAccountIndex];
-  
-  currentAccountIndex = (currentAccountIndex + 1) % HF_ACCOUNTS.length;
-  
-  return { apiKey, accountNumber };
-}
-
-// Helper: تحويل URL إلى Blob
-async function urlToBlob(url: string): Promise<Blob> {
+// Helper: تحويل URL إلى Base64
+async function urlToBase64(url: string): Promise<string> {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch image: ${response.statusText}`);
   }
-  return await response.blob();
+  const blob = await response.blob();
+  const buffer = await blob.arrayBuffer();
+  const base64 = Buffer.from(buffer).toString('base64');
+  const mimeType = blob.type || 'image/jpeg';
+  return `data:${mimeType};base64,${base64}`;
 }
 
 // Helper: حفظ Blob في Supabase Storage
@@ -70,69 +48,70 @@ export async function POST(request: Request) {
 
     console.log('🚀 Processing started:', { productId, modelId });
 
-    // الحصول على API Key
-    const { apiKey, accountNumber } = getNextAccount();
-
-    if (!apiKey) {
-      throw new Error('No Hugging Face API key available. Please add HUGGING_FACE_API_KEY_1 to environment variables.');
+    // التحقق من وجود Replicate API Token
+    const replicateToken = process.env.REPLICATE_API_TOKEN;
+    if (!replicateToken) {
+      throw new Error('REPLICATE_API_TOKEN is not configured');
     }
 
-    console.log(`✅ Using Hugging Face Account ${accountNumber}`);
+    console.log('✅ Replicate API Token found');
 
-    // 1. تحويل الصور إلى Blobs
-    console.log('📥 Converting product image to blob...');
-    const productBlob = await urlToBlob(productImageUrl);
-    console.log('✅ Product image converted');
+    // إنشاء Replicate Client
+    const replicate = new Replicate({
+      auth: replicateToken,
+    });
 
-    console.log('📥 Converting model image to blob...');
-    const modelBlob = await urlToBlob(modelImageUrl);
-    console.log('✅ Model image converted');
+    console.log('📥 Converting images to base64...');
+    const productBase64 = await urlToBase64(productImageUrl);
+    const modelBase64 = await urlToBase64(modelImageUrl);
+    console.log('✅ Images converted to base64');
 
-    // 2. الاتصال بـ Hugging Face API
-    console.log(`🔌 Connecting to Hugging Face (Account ${accountNumber})...`);
+    // استدعاء Replicate API
+    console.log('🎨 Processing with Replicate IDM-VTON...');
     
-    const client = await Client.connect('yisol/IDM-VTON', {
-      hf_token: apiKey as `hf_${string}`,
-    });
+    const output: any = await replicate.run(
+      "cuuupid/idm-vton:c871bb9b046607b680449ecbae55fd8c6d945e0a1948644bf2361b3d021d3ff4",
+      {
+        input: {
+          garm_img: productBase64,
+          human_img: modelBase64,
+          garment_des: "clothing",
+          is_checked: true,
+          is_checked_crop: false,
+          denoise_steps: 30,
+          seed: 42,
+        }
+      }
+    );
 
-    console.log('✅ Connected to Hugging Face successfully');
+    console.log('✅ Replicate processing completed');
 
-    // 3. معالجة الصورة
-    console.log('🎨 Processing AI image...');
-    const result = await client.predict('/tryon', {
-      dict: { background: modelBlob, layers: [], composite: null },
-      garm_img: productBlob,
-      garment_des: 'clothing',
-      is_checked: true,
-      is_checked_crop: false,
-      denoise_steps: 30,
-      seed: 42,
-    });
-
-    console.log('✅ AI processing completed');
-
-    // 4. التحقق من النتيجة
-    const resultUrl = (result.data as any)[0]?.url;
-    if (!resultUrl) {
-      throw new Error('No result URL from AI processing');
+    // التحقق من النتيجة
+    const resultUrl = typeof output === 'string' ? output : output?.[0];
+    
+    if (!resultUrl || typeof resultUrl !== 'string') {
+      console.error('❌ Invalid output format:', output);
+      throw new Error('No valid output URL from Replicate');
     }
 
-    console.log('📥 Downloading processed image from Hugging Face...');
-    const resultBlob = await urlToBlob(resultUrl);
+    // تحميل الصورة المعالجة
+    console.log('📥 Downloading processed image from:', resultUrl);
+    const response = await fetch(resultUrl);
+    const resultBlob = await response.blob();
     console.log('✅ Processed image downloaded');
 
-    // 5. رفع الصورة المعالجة إلى Supabase
-    console.log('💾 Uploading processed image to Supabase...');
+    // رفع الصورة إلى Supabase
+    console.log('💾 Uploading to Supabase...');
     const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.png`;
     const processedImageUrl = await uploadBlob(resultBlob, filename);
 
     if (!processedImageUrl) {
-      throw new Error('Failed to upload processed image to Supabase');
+      throw new Error('Failed to upload processed image');
     }
 
-    console.log('✅ Processed image uploaded to Supabase');
+    console.log('✅ Image uploaded to Supabase');
 
-    // 6. حفظ في قاعدة البيانات
+    // حفظ في قاعدة البيانات
     console.log('💿 Saving to database...');
     const { data, error } = await supabase
       .from('processed_images')
@@ -155,26 +134,23 @@ export async function POST(request: Request) {
     }
 
     console.log('✅ Processing completed successfully');
-    console.log('📊 Result:', data);
 
     return NextResponse.json({
       success: true,
       data,
-      account: accountNumber,
     });
 
   } catch (error) {
-    console.error('❌ ========== FULL ERROR DETAILS ==========');
+    console.error('❌ ========== ERROR ==========');
     console.error('❌ Error:', error);
-    console.error('❌ Error Message:', error instanceof Error ? error.message : 'Unknown error');
-    console.error('❌ Error Stack:', error instanceof Error ? error.stack : 'No stack trace');
-    console.error('❌ ==========================================');
+    console.error('❌ Message:', error instanceof Error ? error.message : 'Unknown');
+    console.error('❌ Stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('❌ ============================');
     
     return NextResponse.json(
       { 
         error: 'Failed to process AI',
         message: error instanceof Error ? error.message : 'Unknown error',
-        stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
       },
       { status: 500 }
     );
