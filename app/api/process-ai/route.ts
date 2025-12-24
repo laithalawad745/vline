@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { Client } from '@gradio/client';
+
+// إعدادات Runtime
+export const runtime = 'nodejs';
 
 // تعريف حسابات Hugging Face الثلاثة
 const HF_ACCOUNTS = [
@@ -14,7 +18,7 @@ let currentAccountIndex = 0;
 // دالة للحصول على الحساب التالي
 function getNextAccount(): { apiKey: string | undefined; accountNumber: number } {
   if (HF_ACCOUNTS.length === 0) {
-    console.warn('⚠️ Warning: No Hugging Face API keys found. Using free tier.');
+    console.warn('⚠️ Warning: No Hugging Face API keys found');
     return { apiKey: undefined, accountNumber: 0 };
   }
 
@@ -29,6 +33,9 @@ function getNextAccount(): { apiKey: string | undefined; accountNumber: number }
 // Helper: تحويل URL إلى Blob
 async function urlToBlob(url: string): Promise<Blob> {
   const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.statusText}`);
+  }
   return await response.blob();
 }
 
@@ -42,7 +49,7 @@ async function uploadBlob(blob: Blob, filename: string): Promise<string | null> 
       });
 
     if (error) {
-      console.error('Upload error:', error);
+      console.error('❌ Upload error:', error);
       return null;
     }
 
@@ -52,7 +59,7 @@ async function uploadBlob(blob: Blob, filename: string): Promise<string | null> 
 
     return urlData.publicUrl;
   } catch (error) {
-    console.error('Error uploading blob:', error);
+    console.error('❌ Error uploading blob:', error);
     return null;
   }
 }
@@ -63,29 +70,34 @@ export async function POST(request: Request) {
 
     console.log('🚀 Processing started:', { productId, modelId });
 
+    // الحصول على API Key
     const { apiKey, accountNumber } = getNextAccount();
 
     if (!apiKey) {
-      console.log('⚠️ No API key available, using free tier with rate limits.');
-    } else {
-      console.log(`✅ Using Hugging Face Account ${accountNumber}`);
+      throw new Error('No Hugging Face API key available. Please add HUGGING_FACE_API_KEY_1 to environment variables.');
     }
 
+    console.log(`✅ Using Hugging Face Account ${accountNumber}`);
+
     // 1. تحويل الصور إلى Blobs
-    console.log('📥 Converting images to blobs...');
+    console.log('📥 Converting product image to blob...');
     const productBlob = await urlToBlob(productImageUrl);
+    console.log('✅ Product image converted');
+
+    console.log('📥 Converting model image to blob...');
     const modelBlob = await urlToBlob(modelImageUrl);
+    console.log('✅ Model image converted');
 
     // 2. الاتصال بـ Hugging Face API
-    console.log(`🔗 Connecting to Hugging Face using Account ${accountNumber}...`);
-    
-    // استيراد dynamically
-    const { Client } = await import('@gradio/client');
+    console.log(`🔌 Connecting to Hugging Face (Account ${accountNumber})...`);
     
     const client = await Client.connect('yisol/IDM-VTON', {
-      hf_token: apiKey as `hf_${string}` | undefined,
+      hf_token: apiKey as `hf_${string}`,
     });
 
+    console.log('✅ Connected to Hugging Face successfully');
+
+    // 3. معالجة الصورة
     console.log('🎨 Processing AI image...');
     const result = await client.predict('/tryon', {
       dict: { background: modelBlob, layers: [], composite: null },
@@ -97,22 +109,30 @@ export async function POST(request: Request) {
       seed: 42,
     });
 
-    // 3. حفظ النتيجة
+    console.log('✅ AI processing completed');
+
+    // 4. التحقق من النتيجة
     const resultUrl = (result.data as any)[0]?.url;
     if (!resultUrl) {
-      throw new Error('No result from AI processing');
+      throw new Error('No result URL from AI processing');
     }
 
-    console.log('💾 Uploading processed image to Supabase...');
+    console.log('📥 Downloading processed image from Hugging Face...');
     const resultBlob = await urlToBlob(resultUrl);
+    console.log('✅ Processed image downloaded');
+
+    // 5. رفع الصورة المعالجة إلى Supabase
+    console.log('💾 Uploading processed image to Supabase...');
     const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.png`;
     const processedImageUrl = await uploadBlob(resultBlob, filename);
 
     if (!processedImageUrl) {
-      throw new Error('Failed to upload processed image');
+      throw new Error('Failed to upload processed image to Supabase');
     }
 
-    // 5. حفظ في قاعدة البيانات
+    console.log('✅ Processed image uploaded to Supabase');
+
+    // 6. حفظ في قاعدة البيانات
     console.log('💿 Saving to database...');
     const { data, error } = await supabase
       .from('processed_images')
@@ -129,16 +149,32 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Database error:', error);
+      throw error;
+    }
 
-    console.log('✅ Processing completed successfully using Account', accountNumber);
-    return NextResponse.json(data);
+    console.log('✅ Processing completed successfully');
+    console.log('📊 Result:', data);
+
+    return NextResponse.json({
+      success: true,
+      data,
+      account: accountNumber,
+    });
+
   } catch (error) {
-    console.error('❌ Error processing AI:', error);
+    console.error('❌ ========== FULL ERROR DETAILS ==========');
+    console.error('❌ Error:', error);
+    console.error('❌ Error Message:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('❌ Error Stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('❌ ==========================================');
+    
     return NextResponse.json(
       { 
         error: 'Failed to process AI',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
       },
       { status: 500 }
     );
