@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { Client } from '@gradio/client';
 
 // تعريف حسابات Hugging Face الثلاثة
 const HF_ACCOUNTS = [
   process.env.HUGGING_FACE_API_KEY_1,
   process.env.HUGGING_FACE_API_KEY_2,
   process.env.HUGGING_FACE_API_KEY_3,
-].filter(Boolean); // إزالة أي قيم فارغة
+].filter(Boolean);
 
-// متغير لتتبع الحساب الحالي (يبدأ من 0)
+// متغير لتتبع الحساب الحالي
 let currentAccountIndex = 0;
 
 // دالة للحصول على الحساب التالي
@@ -19,13 +18,9 @@ function getNextAccount(): { apiKey: string | undefined; accountNumber: number }
     return { apiKey: undefined, accountNumber: 0 };
   }
 
-  // الحصول على رقم الحساب الحالي (1، 2، 3)
   const accountNumber = currentAccountIndex + 1;
-  
-  // الحصول على الحساب الحالي
   const apiKey = HF_ACCOUNTS[currentAccountIndex];
   
-  // الانتقال للحساب التالي (Round Robin)
   currentAccountIndex = (currentAccountIndex + 1) % HF_ACCOUNTS.length;
   
   return { apiKey, accountNumber };
@@ -68,14 +63,12 @@ export async function POST(request: Request) {
 
     console.log('🚀 Processing started:', { productId, modelId });
 
-    // الحصول على API Key التالي في الدورة
     const { apiKey, accountNumber } = getNextAccount();
 
     if (!apiKey) {
       console.log('⚠️ No API key available, using free tier with rate limits.');
     } else {
-      console.log(`✅ استخدام حساب Hugging Face رقم ${accountNumber} من ${HF_ACCOUNTS.length}`);
-      console.log(`🔑 Account ${accountNumber}: ${apiKey.substring(0, 10)}...`);
+      console.log(`✅ Using Hugging Face Account ${accountNumber}`);
     }
 
     // 1. تحويل الصور إلى Blobs
@@ -83,10 +76,14 @@ export async function POST(request: Request) {
     const productBlob = await urlToBlob(productImageUrl);
     const modelBlob = await urlToBlob(modelImageUrl);
 
-    // 2. الاتصال بـ Hugging Face API مع API Key الحالي
+    // 2. الاتصال بـ Hugging Face API
     console.log(`🔗 Connecting to Hugging Face using Account ${accountNumber}...`);
+    
+    // استيراد dynamically
+    const { Client } = await import('@gradio/client');
+    
     const client = await Client.connect('yisol/IDM-VTON', {
-      hf_token: (apiKey as `hf_${string}`) || undefined,
+      hf_token: apiKey as `hf_${string}` | undefined,
     });
 
     console.log('🎨 Processing AI image...');
@@ -107,7 +104,6 @@ export async function POST(request: Request) {
     }
 
     console.log('💾 Uploading processed image to Supabase...');
-    // 4. تحميل الصورة المعالجة وحفظها في Supabase
     const resultBlob = await urlToBlob(resultUrl);
     const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.png`;
     const processedImageUrl = await uploadBlob(resultBlob, filename);
@@ -136,7 +132,6 @@ export async function POST(request: Request) {
     if (error) throw error;
 
     console.log('✅ Processing completed successfully using Account', accountNumber);
-    console.log('─────────────────────────────────────────────');
     return NextResponse.json(data);
   } catch (error) {
     console.error('❌ Error processing AI:', error);
